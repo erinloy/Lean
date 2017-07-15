@@ -16,6 +16,7 @@
 
 using QuantConnect.Brokerages;
 using QuantConnect.Data;
+using QuantConnect.Logging;
 
 namespace QuantConnect.Securities
 {
@@ -45,7 +46,8 @@ namespace QuantConnect.Securities
         /// Initializes the specified security by setting up the models
         /// </summary>
         /// <param name="security">The security to be initialized</param>
-        public virtual void Initialize(Security security)
+        /// <param name="seedSecurity">True to seed the security, false otherwise</param>
+        public virtual void Initialize(Security security, bool seedSecurity)
         {
             // set leverage and models
             security.SetLeverage(_brokerageModel.GetLeverage(security));
@@ -54,10 +56,22 @@ namespace QuantConnect.Securities
             security.SlippageModel = _brokerageModel.GetSlippageModel(security);
             security.SettlementModel = _brokerageModel.GetSettlementModel(security, _brokerageModel.AccountType);
 
-            BaseData seedData = _securitySeeder.GetSeedData(security);
-            if (seedData != null)
+            if (seedSecurity)
             {
-                security.SetMarketPrice(seedData);
+                // Do not seed Options and Futures
+                if (security.Symbol.SecurityType != SecurityType.Option && security.Symbol.SecurityType != SecurityType.Future)
+                {
+                    BaseData seedData = _securitySeeder.GetSeedData(security);
+                    if (seedData != null)
+                    {
+                        security.SetMarketPrice(seedData);
+                        Log.Trace("BrokerageModelSecurityInitializer.Initialize(): Seeded security: " + seedData.Symbol.Value + ": " + seedData.Value);
+                    }
+                    else
+                    {
+                        Log.Trace("BrokerageModelSecurityInitializer.Initialize(): Unable to seed security: " + security.Symbol.Value);
+                    }
+                }
             }
         }
     }

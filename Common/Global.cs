@@ -19,8 +19,6 @@ using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using QuantConnect.Securities;
-using QuantConnect.Securities.Cfd;
-using QuantConnect.Securities.Forex;
 
 namespace QuantConnect
 {
@@ -45,6 +43,8 @@ namespace QuantConnect
         public const string US = "M/d/yyyy h:mm:ss tt";
         /// Date format of QC forex data
         public const string Forex = "yyyyMMdd HH:mm:ss.ffff";
+        /// YYYYMM Year and Month Character Date Representation (used for futures)
+        public const string YearMonth = "yyyyMM";
     }
 
     /// <summary>
@@ -74,6 +74,12 @@ namespace QuantConnect
         /// Current market conversion rate into the account currency
         public decimal ConversionRate;
 
+        /// Current market value of the holding 
+        public decimal MarketValue;
+
+        /// Current unrealized P/L of the holding 
+        public decimal UnrealizedPnL;
+
         /// Create a new default holding:
         public Holding()
         {
@@ -93,6 +99,7 @@ namespace QuantConnect
             Symbol = holding.Symbol;
             Type = holding.Type;
             Quantity = holding.Quantity;
+            MarketValue = holding.HoldingsValue;
             CurrencySymbol = Currencies.GetCurrencySymbol(security.QuoteCurrency.Symbol);
             ConversionRate = security.QuoteCurrency.ConversionRate;
 
@@ -104,6 +111,7 @@ namespace QuantConnect
 
             AveragePrice = Math.Round(holding.AveragePrice, rounding);
             MarketPrice = Math.Round(holding.Price, rounding);
+            UnrealizedPnL = Math.Round(holding.UnrealizedProfit, 2);
         }
 
         /// <summary>
@@ -119,6 +127,8 @@ namespace QuantConnect
                 Type = Type,
                 Quantity = Quantity,
                 MarketPrice = MarketPrice,
+                MarketValue = MarketValue,
+                UnrealizedPnL = UnrealizedPnL,
                 ConversionRate  = ConversionRate,
                 CurrencySymbol = CurrencySymbol
             };
@@ -129,11 +139,14 @@ namespace QuantConnect
         /// </summary>
         public override string ToString()
         {
-            if (ConversionRate == 1.0m)
+            var value = string.Format("{0}: {1} @ {2}{3} - Market: {2}{4}", Symbol.Value, Quantity, CurrencySymbol, AveragePrice, MarketPrice);
+
+            if (ConversionRate != 1m)
             {
-                return string.Format("{0}: {1} @ {2}{3} - Market: {2}{4}", Symbol, Quantity, CurrencySymbol, AveragePrice, MarketPrice);
+                value += string.Format(" - Conversion: {0}", ConversionRate);
             }
-            return string.Format("{0}: {1} @ {2}{3} - Market: {2}{4} - Conversion: {5}", Symbol, Quantity, CurrencySymbol, AveragePrice, MarketPrice, ConversionRate);
+
+            return value;
         }
     }
 
@@ -320,7 +333,9 @@ namespace QuantConnect
         /// QuoteBar market data type [Bid(OHLC), Ask(OHLC) and Mid(OHLC) summary bar]
         QuoteBar,
         /// Option chain data
-        OptionChain
+        OptionChain,
+        /// Futures chain data
+        FuturesChain
     }
 
     /// <summary>
@@ -351,15 +366,17 @@ namespace QuantConnect
     }
 
     /// <summary>
-    /// Types of tick data - trades or quote ticks.
+    /// Types of tick data 
     /// </summary>
-    /// <remarks>QuantConnect currently only has trade tick data but can handle quote tick data with the same data structures.</remarks>
+    /// <remarks>QuantConnect currently only has trade, quote, open interest tick data.</remarks>
     public enum TickType
     {
         /// Trade type tick object.
         Trade,
         /// Quote type tick object.
-        Quote
+        Quote, 
+        /// Open Interest type tick object (for options, futures)
+        OpenInterest
     }
 
     /// <summary>
@@ -426,6 +443,22 @@ namespace QuantConnect
         /// European style options are able to be exercised on the expiration date only.
         /// </summary>
         European
+    }
+
+    /// <summary>
+    /// Specifies the type of settlement in derivative deals 
+    /// </summary>
+    public enum SettlementType
+    {
+        /// <summary>
+        /// Physical delivery of the underlying security 
+        /// </summary>
+        PhysicalDelivery, 
+        
+        /// <summary>
+        /// Cash is paid/received on settlement
+        /// </summary>
+        Cash
     }
 
     /// <summary>
@@ -595,7 +628,8 @@ namespace QuantConnect
             {"W", "Chicago Board Options Exchange"},
             {"X", "Philadelphia Stock Exchange"},
             {"Y", "BATS Y-Exchange, Inc"},
-            {"Z", "BATS Exchange, Inc"}
+            {"Z", "BATS Exchange, Inc"},
+            {"IEX", "Investors Exchange"},
         };
 
         /// Canada Market Short Codes:
@@ -894,7 +928,7 @@ namespace QuantConnect
             new DateTime(2018, 12, 25),
             new DateTime(2019, 12, 25),
             new DateTime(2020, 12, 25),
-            new DateTime(2021, 12, 25),
+            new DateTime(2021, 12, 24),
             new DateTime(2022, 12, 26),
             new DateTime(2023, 12, 25)
         };

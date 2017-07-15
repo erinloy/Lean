@@ -1,5 +1,5 @@
 #
-#	LEAN Foundation Docker Container November-2016
+#	LEAN Foundation Docker Container 20170623
 #	Cross platform deployment for multiple brokerages	
 #	Intended to be used in conjunction with DockerfileLeanAlgorithm. This is just the foundation common OS+Dependencies required.
 #
@@ -16,8 +16,10 @@ CMD ["/sbin/my_init"]
 # Misc tools for running Python.NET and IB inside a headless container.
 RUN \
   apt-get update && \
-  apt-get install -y wget xvfb unzip curl libxrender1 libxtst6 libxi6 git libglib2.0-dev python-pip && \
-  pip install --upgrade pip && pip install pycparser pandas scipy numpy
+  apt-get install -y wget xvfb unzip curl libxrender1 libxtst6 libxi6 python-pip && \
+  pip install --upgrade pip && pip install pycparser pandas scipy numpy sklearn  && \
+  pip install blaze cvxopt cvxpy pykalman statistics statsmodels arch copulalib && \
+  pip install xgboost theano keras tensorflow
 
 # Java for running IB inside container:
 # https://github.com/dockerfile/java/blob/master/oracle-java8/Dockerfile
@@ -54,8 +56,16 @@ RUN echo "deb http://download.mono-project.com/repo/debian wheezy/snapshots/4.6.
   && apt-get install -y fsharp && rm -rf /var/lib/apt/lists/* /tmp/*
 
 # Install Python.NET
-RUN cd ~ && \
-    git clone https://github.com/QuantConnect/pythonnet.git && \
-    cd ~/pythonnet && \
-    python setup.py build_ext --inplace && \
-    ln -s /usr/lib/python2.7/config-x86_64-linux-gnu/libpython2.7.so .
+RUN nuget install QuantConnect.pythonnet -Version 1.0.4.4 \
+    && cp QuantConnect.pythonnet.1.0.4.4/lib/Python.Runtime.dll /usr/lib
+	
+RUN ln -s /usr/lib/x86_64-linux-gnu/libpython2.7.so /usr/lib/libpython27.so
+
+# Install TA-lib for python
+RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz \
+    && tar -zxvf ta-lib-0.4.0-src.tar.gz \
+    && cd ta-lib \
+    && ./configure --prefix=/usr \
+    && make \
+    && make install \ 
+    && pip install TA-lib

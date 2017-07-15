@@ -37,10 +37,9 @@ namespace QuantConnect.Lean.Engine
         private readonly IResultHandler _results;
         private readonly IRealTimeHandler _realTime;
         private readonly ITransactionHandler _transactions;
-        private readonly ICommandQueueHandler _commandQueue;
         private readonly IMapFileProvider _mapFileProvider;
         private readonly IFactorFileProvider _factorFileProvider;
-        private readonly IDataFileProvider _dataFileProvider;
+        private readonly IDataProvider _dataProvider;
 
         /// <summary>
         /// Gets the result handler used to communicate results from the algorithm
@@ -83,14 +82,6 @@ namespace QuantConnect.Lean.Engine
         }
 
         /// <summary>
-        /// Gets the command queue responsible for receiving external commands for the algorithm
-        /// </summary>
-        public ICommandQueueHandler CommandQueue
-        {
-            get { return _commandQueue; }
-        }
-
-        /// <summary>
         /// Gets the map file provider used as a map file source for the data feed
         /// </summary>
         public IMapFileProvider MapFileProvider
@@ -109,9 +100,9 @@ namespace QuantConnect.Lean.Engine
         /// <summary>
         /// Gets the data file provider used to retrieve security data if it is not on the file system
         /// </summary>
-        public IDataFileProvider DataFileProvider
+        public IDataProvider DataProvider
         {
-            get { return _dataFileProvider; }
+            get { return _dataProvider; }
         }
 
         /// <summary>
@@ -125,16 +116,15 @@ namespace QuantConnect.Lean.Engine
         /// <param name="commandQueue">The command queue handler used to receive external commands for the algorithm</param>
         /// <param name="mapFileProvider">The map file provider used to retrieve map files for the data feed</param>
         /// <param name="factorFileProvider">Map file provider used as a map file source for the data feed</param>
-        /// <param name="dataFileProvider">file provider used to retrieve security data if it is not on the file system</param>
+        /// <param name="dataProvider">file provider used to retrieve security data if it is not on the file system</param>
         public LeanEngineAlgorithmHandlers(IResultHandler results,
             ISetupHandler setup,
             IDataFeed dataFeed,
             ITransactionHandler transactions,
             IRealTimeHandler realTime,
-            ICommandQueueHandler commandQueue,
             IMapFileProvider mapFileProvider,
             IFactorFileProvider factorFileProvider,
-            IDataFileProvider dataFileProvider
+            IDataProvider dataProvider
             )
         {
             if (results == null)
@@ -157,10 +147,6 @@ namespace QuantConnect.Lean.Engine
             {
                 throw new ArgumentNullException("realTime");
             }
-            if (commandQueue == null)
-            {
-                throw new ArgumentNullException("commandQueue");
-            }
             if (mapFileProvider == null)
             {
                 throw new ArgumentNullException("mapFileProvider");
@@ -169,19 +155,18 @@ namespace QuantConnect.Lean.Engine
             {
                 throw new ArgumentNullException("factorFileProvider");
             }
-            if (dataFileProvider == null)
+            if (dataProvider == null)
             {
-                throw new ArgumentNullException("dataFileProvider");
+                throw new ArgumentNullException("dataProvider");
             }
             _results = results;
             _setup = setup;
             _dataFeed = dataFeed;
             _transactions = transactions;
             _realTime = realTime;
-            _commandQueue = commandQueue;
             _mapFileProvider = mapFileProvider;
             _factorFileProvider = factorFileProvider;
-            _dataFileProvider = dataFileProvider;
+            _dataProvider = dataProvider;
         }
         
         /// <summary>
@@ -197,10 +182,9 @@ namespace QuantConnect.Lean.Engine
             var realTimeHandlerTypeName = Config.Get("real-time-handler", "BacktestingRealTimeHandler");
             var dataFeedHandlerTypeName = Config.Get("data-feed-handler", "FileSystemDataFeed");
             var resultHandlerTypeName = Config.Get("result-handler", "BacktestingResultHandler");
-            var commandQueueHandlerTypeName = Config.Get("command-queue-handler", "EmptyCommandQueueHandler");
             var mapFileProviderTypeName = Config.Get("map-file-provider", "LocalDiskMapFileProvider");
             var factorFileProviderTypeName = Config.Get("factor-file-provider", "LocalDiskFactorFileProvider");
-            var fileProviderTypeName = Config.Get("data-file-provider", "DefaultDataFileProvider");
+            var dataProviderTypeName = Config.Get("data-provider", "DefaultDataProvider");
 
             return new LeanEngineAlgorithmHandlers(
                 composer.GetExportedValueByTypeName<IResultHandler>(resultHandlerTypeName),
@@ -208,10 +192,9 @@ namespace QuantConnect.Lean.Engine
                 composer.GetExportedValueByTypeName<IDataFeed>(dataFeedHandlerTypeName),
                 composer.GetExportedValueByTypeName<ITransactionHandler>(transactionHandlerTypeName),
                 composer.GetExportedValueByTypeName<IRealTimeHandler>(realTimeHandlerTypeName),
-                composer.GetExportedValueByTypeName<ICommandQueueHandler>(commandQueueHandlerTypeName),
                 composer.GetExportedValueByTypeName<IMapFileProvider>(mapFileProviderTypeName),
                 composer.GetExportedValueByTypeName<IFactorFileProvider>(factorFileProviderTypeName),
-                composer.GetExportedValueByTypeName<IDataFileProvider>(fileProviderTypeName)
+                composer.GetExportedValueByTypeName<IDataProvider>(dataProviderTypeName)
                 );
         }
 
@@ -222,7 +205,6 @@ namespace QuantConnect.Lean.Engine
         public void Dispose()
         {
             Setup.Dispose();
-            CommandQueue.Dispose();
         }
     }
 }

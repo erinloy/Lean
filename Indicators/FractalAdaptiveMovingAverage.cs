@@ -54,7 +54,6 @@ namespace QuantConnect.Indicators
         /// <summary>
         /// Initializes a new instance of the average class
         /// </summary>
-        /// <param name="name">The name of the indicator instance</param>
         /// <param name="n">The window period (must be even). Example value: 16</param>
         public FractalAdaptiveMovingAverage(int n)
             : this("FRAMA" + n, n, 198)
@@ -74,7 +73,7 @@ namespace QuantConnect.Indicators
             _low.Add((double)input.Low);
 
             // our first data point just return identity
-            if (!_high.IsReady)
+            if (_high.Samples <= _high.Size)
             {
                 _filt = price;
             }
